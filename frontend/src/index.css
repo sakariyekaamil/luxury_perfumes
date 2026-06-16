@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+
+  body {
+    @apply bg-white text-primary-900 dark:bg-primary-900 dark:text-slate-100;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .luxury-card {
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/80 dark:bg-primary-800/50;
+  }
+
+  .luxury-btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .luxury-btn-primary {
+    @apply luxury-btn bg-primary-900 text-white hover:bg-primary-800 focus:ring-primary-500 dark:bg-gold dark:text-primary-900 dark:hover:bg-gold-400;
+  }
+
+  .luxury-btn-gold {
+    @apply luxury-btn bg-gold text-primary-900 hover:bg-gold-400 focus:ring-gold;
+  }
+
+  .luxury-btn-outline {
+    @apply luxury-btn border border-slate-300 bg-transparent hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-primary-800;
+  }
+
+  .luxury-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold dark:border-slate-600 dark:bg-primary-800 dark:text-white;
+  }
+
+  .luxury-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
+  }
+
+  .stat-card {
+    @apply luxury-card p-6 transition-all duration-300 hover:shadow-md;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-primary-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-500;
+}

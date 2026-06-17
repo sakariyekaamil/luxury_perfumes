@@ -30,6 +30,25 @@ function drawDecor(doc: InstanceType<typeof PDFDocument>, x: number, y: number) 
   doc.rect(x + 76, y + 2, 6, 14).fill('#1E293B');
 }
 
+async function loadLogoBuffer(logoUrl?: string | null): Promise<Buffer | null> {
+  if (!logoUrl) return null;
+
+  if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+    const response = await fetch(logoUrl);
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  if (logoUrl.startsWith('/uploads/')) {
+    const localPath = path.join(process.cwd(), logoUrl.replace(/^\//, '').replace(/\//g, path.sep));
+    if (fs.existsSync(localPath)) {
+      return fs.readFileSync(localPath);
+    }
+  }
+
+  return null;
+}
+
 export class InvoiceService {
   static async generatePdf(saleId: string): Promise<Buffer> {
     const sale = await SaleService.getById(saleId);
@@ -39,6 +58,7 @@ export class InvoiceService {
     const payment = sale.payments?.[0];
     const cashierName = sale.user ? `${sale.user.firstName} ${sale.user.lastName}` : 'Staff';
     const termsText = settings.invoiceFooter || 'Payment is due upon receipt. Thank you for choosing Luxury Perfumes.';
+    const logoBuffer = await loadLogoBuffer(settings.companyLogo);
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 0, size: 'A4' });
@@ -51,13 +71,8 @@ export class InvoiceService {
       doc.on('error', reject);
 
       // Logo / company
-      const localLogoPath = settings.companyLogo?.startsWith('/uploads/')
-        ? path.join(process.cwd(), settings.companyLogo.replace(/^\//, '').replace(/\//g, path.sep))
-        : null;
-      const hasLocalLogo = localLogoPath && fs.existsSync(localLogoPath);
-
-      if (hasLocalLogo) {
-        doc.image(localLogoPath!, margin, 45, { fit: [40, 40], align: 'center', valign: 'center' });
+      if (logoBuffer) {
+        doc.image(logoBuffer, margin, 45, { fit: [40, 40], align: 'center', valign: 'center' });
       } else {
         doc.roundedRect(margin, 45, 40, 40, 6).fill(NAVY);
         doc.fillColor(GOLD).fontSize(14).font('Helvetica-Bold').text('LP', margin + 11, 57);

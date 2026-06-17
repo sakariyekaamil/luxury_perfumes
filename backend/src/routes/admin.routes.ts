@@ -1,4 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
+import fs from 'fs';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { requireAdminRole } from '../middleware/rbac';
 import { PaymentService, ExpenseService } from '../services/finance.service';
@@ -7,7 +8,9 @@ import { ReportPdfService } from '../services/report-pdf.service';
 import { UserService } from '../services/user.service';
 import { SettingsService, NotificationService, AuditLogService } from '../services/settings.service';
 import { paramId } from '../utils/params';
-import { logoUpload, deleteLocalLogo } from '../middleware/upload';
+import { logoUpload, deleteLocalLogo, saveLocalLogo } from '../middleware/upload';
+import { deleteCloudinaryLogo, uploadLogoBuffer } from '../services/cloudinary.service';
+import { isCloudinaryConfigured, config } from '../config';
 import { ValidationError } from '../utils/errors';
 
 const router = Router();
@@ -247,9 +250,28 @@ router.put('/settings', async (req, res: Response, next: NextFunction) => {
 router.post('/settings/logo', logoUpload.single('logo'), async (req, res: Response, next: NextFunction) => {
   try {
     if (!req.file) throw new ValidationError('No logo image provided');
+    if (config.isServerless && !isCloudinaryConfigured()) {
+      throw new ValidationError('Logo uploads require Cloudinary configuration in production');
+    }
     const settings = await SettingsService.get();
-    deleteLocalLogo(settings.companyLogo);
-    const logoUrl = `/uploads/logos/${req.file.filename}`;
+
+    if (settings.companyLogo?.includes('cloudinary.com')) {
+      await deleteCloudinaryLogo(settings.companyLogo);
+    } else {
+      deleteLocalLogo(settings.companyLogo);
+    }
+
+    let logoUrl: string;
+    if (isCloudinaryConfigured()) {
+      const buffer = req.file.buffer ?? fs.readFileSync(req.file.path);
+      logoUrl = await uploadLogoBuffer(buffer, req.file.mimetype);
+      if (req.file.path) deleteLocalLogo(`/uploads/logos/${req.file.filename}`);
+    } else if (req.file.buffer) {
+      logoUrl = saveLocalLogo(req.file);
+    } else {
+      logoUrl = `/uploads/logos/${req.file.filename}`;
+    }
+
     const data = await SettingsService.update({ companyLogo: logoUrl });
     res.json({ success: true, data });
   } catch (error) { next(error); }
@@ -258,7 +280,11 @@ router.post('/settings/logo', logoUpload.single('logo'), async (req, res: Respon
 router.delete('/settings/logo', async (_req, res: Response, next: NextFunction) => {
   try {
     const settings = await SettingsService.get();
-    deleteLocalLogo(settings.companyLogo);
+    if (settings.companyLogo?.includes('cloudinary.com')) {
+      await deleteCloudinaryLogo(settings.companyLogo);
+    } else {
+      deleteLocalLogo(settings.companyLogo);
+    }
     const data = await SettingsService.update({ companyLogo: null });
     res.json({ success: true, data });
   } catch (error) { next(error); }

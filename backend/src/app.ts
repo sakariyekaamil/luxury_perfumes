@@ -46,6 +46,15 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+app.get('/api/ping', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'pong',
+    test: true,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/products', productRoutes);

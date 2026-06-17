@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { API_ORIGIN } from './config';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -30,7 +31,11 @@ export function formatDateTime(date: string | Date) {
 export function resolveMediaUrl(url?: string | null) {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  return url.startsWith('/') ? url : `/${url}`;
+  const path = url.startsWith('/') ? url : `/${url}`;
+  if (path.startsWith('/uploads') && API_ORIGIN) {
+    return `${API_ORIGIN}${path}`;
+  }
+  return path;
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

@@ -18,7 +18,7 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 const corsOrigins = config.frontendUrl
-  ? config.frontendUrl.split(',').map((origin) => origin.trim())
+  ? config.frontendUrl.split(',').map((origin) => origin.trim().replace(/\/$/, ''))
   : true;
 
 app.use(cors({ origin: corsOrigins, credentials: true }));

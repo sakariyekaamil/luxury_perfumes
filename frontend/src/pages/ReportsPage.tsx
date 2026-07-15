@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, FileText, Upload, X, ImageIcon } from 'lucide-react';
 import { adminApi, operationsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, downloadBlob, resolveMediaUrl } from '@/lib/utils';
+import { toast, getErrorMessage } from '@/lib/toast';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -41,8 +42,9 @@ export function ReportsPage() {
     try {
       const res = await fn();
       downloadBlob(res.data, filename);
+      toast.success('PDF downloaded successfully');
     } catch {
-      alert('Failed to download PDF. Ensure the backend is running.');
+      toast.error('Failed to download PDF. Ensure the backend is running.');
     } finally {
       setDownloading(null);
     }
@@ -53,8 +55,9 @@ export function ReportsPage() {
     try {
       const res = await operationsApi.getSaleInvoicePdf(saleId);
       downloadBlob(res.data, `invoice-${saleNumber}.pdf`);
+      toast.success('Invoice downloaded successfully');
     } catch {
-      alert('Failed to download invoice PDF.');
+      toast.error('Failed to download invoice PDF.');
     } finally {
       setDownloading(null);
     }
@@ -344,8 +347,6 @@ export function NotificationsPage() {
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState('');
 
@@ -393,14 +394,9 @@ export function SettingsPage() {
     mutationFn: (payload: unknown) => adminApi.updateSettings(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
-      setError('');
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      toast.success('Settings saved successfully');
     },
-    onError: (err: unknown) => {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Failed to save settings');
-    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to save settings')),
   });
 
   const handleCurrencyChange = (currency: string) => {
@@ -415,7 +411,7 @@ export function SettingsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.companyName.trim()) {
-      setError('Company name is required');
+      toast.warning('Company name is required');
       return;
     }
     mutation.mutate({
@@ -436,7 +432,6 @@ export function SettingsPage() {
 
   const setField = (key: keyof typeof form, value: string | boolean) => {
     setForm((f) => ({ ...f, [key]: value }));
-    setSaved(false);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -445,16 +440,15 @@ export function SettingsPage() {
     if (!file) return;
 
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-      setError('Please choose a JPEG, PNG, WebP, or GIF image');
+      toast.warning('Please choose a JPEG, PNG, WebP, or GIF image');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError('Logo must be 2MB or smaller');
+      toast.warning('Logo must be 2MB or smaller');
       return;
     }
 
     setLogoUploading(true);
-    setError('');
     const reader = new FileReader();
     reader.onload = () => setLogoPreview(reader.result as string);
     reader.readAsDataURL(file);
@@ -464,13 +458,11 @@ export function SettingsPage() {
       const updated = res.data.data as CompanySettings;
       setForm((f) => ({ ...f, companyLogo: updated.companyLogo || '' }));
       setLogoPreview('');
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      toast.success('Logo uploaded successfully');
     } catch (err: unknown) {
       setLogoPreview('');
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Failed to upload logo');
+      toast.error(getErrorMessage(err, 'Failed to upload logo'));
     } finally {
       setLogoUploading(false);
     }
@@ -478,17 +470,14 @@ export function SettingsPage() {
 
   const handleLogoDelete = async () => {
     setLogoUploading(true);
-    setError('');
     try {
       await adminApi.deleteLogo();
       setForm((f) => ({ ...f, companyLogo: '' }));
       setLogoPreview('');
       queryClient.invalidateQueries({ queryKey: ['settings'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      toast.success('Logo removed successfully');
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Failed to remove logo');
+      toast.error(getErrorMessage(err, 'Failed to remove logo'));
     } finally {
       setLogoUploading(false);
     }
@@ -503,22 +492,12 @@ export function SettingsPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Settings</h1>
           <p className="text-slate-500">Company profile, invoices, and system configuration</p>
         </div>
-        {saved && (
-          <span className="text-sm font-medium text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-lg">
-            Settings saved successfully
-          </span>
-        )}
       </div>
 
       {isLoading ? (
         <LoadingSpinner />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20">
-              {error}
-            </div>
-          )}
 
           <Card title="Company Profile">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

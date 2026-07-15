@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, FileText, Printer, Download } from 'lucide-react';
 import { operationsApi, catalogApi, productApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { toast, getErrorMessage } from '@/lib/toast';
 import type { Sale, Purchase, Product, Customer, CompanySettings } from '@/types';
 import { SaleInvoice } from '@/components/sales/SaleInvoice';
 import { Button } from '@/components/ui/Button';
@@ -37,7 +38,6 @@ export function SalesPage() {
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState<SaleLineItem[]>([emptyLine()]);
-  const [error, setError] = useState('');
   const [invoiceSale, setInvoiceSale] = useState<Sale | null>(null);
   const queryClient = useQueryClient();
 
@@ -67,12 +67,18 @@ export function SalesPage() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['products-all'] });
+      toast.success('Sale completed successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to complete sale')),
   });
 
   const cancelMutation = useMutation({
     mutationFn: operationsApi.cancelSale,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      toast.success('Sale cancelled');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to cancel sale')),
   });
 
   const createMutation = useMutation({
@@ -111,11 +117,9 @@ export function SalesPage() {
       resetForm();
       setShowModal(false);
       if (sale) setInvoiceSale(sale);
+      toast.success('Sale created successfully');
     },
-    onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(axiosErr.response?.data?.message || axiosErr.message || 'Failed to create sale');
-    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to create sale')),
   });
 
   const sales = data?.data?.data || [];
@@ -163,7 +167,6 @@ export function SalesPage() {
     setDiscount(0);
     setNotes('');
     setLineItems([emptyLine()]);
-    setError('');
   };
 
   const updateLineItem = (index: number, field: keyof SaleLineItem, value: string | number) => {
@@ -294,8 +297,6 @@ export function SalesPage() {
         }
       >
         <div className="space-y-4">
-          {error && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{error}</p>}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Customer (optional)"
@@ -453,12 +454,21 @@ export function PurchasesPage() {
 
   const approveMutation = useMutation({
     mutationFn: operationsApi.approvePurchase,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchases'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      toast.success('Purchase approved successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to approve purchase')),
   });
 
   const createMutation = useMutation({
     mutationFn: operationsApi.createPurchase,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchases'] }); setShowModal(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      setShowModal(false);
+      toast.success('Purchase created successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to create purchase')),
   });
 
   const purchases = data?.data?.data || [];

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Pencil, Trash2, Package } from 'lucide-react';
 import { productApi, catalogApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { toast, getErrorMessage } from '@/lib/toast';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -36,7 +37,9 @@ export function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setShowModal(false);
       setEditingProduct(null);
+      toast.success(editingProduct ? 'Product updated successfully' : 'Product created successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to save product')),
   });
 
   const deleteMutation = useMutation({
@@ -44,7 +47,9 @@ export function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setDeleteId(null);
+      toast.success('Product deleted successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to delete product')),
   });
 
   const products = data?.data?.data || [];

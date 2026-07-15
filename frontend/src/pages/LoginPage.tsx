@@ -7,6 +7,7 @@ import { ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store';
 import { authApi } from '@/lib/api';
 import { isAdminRole } from '@/lib/roles';
+import { toast } from '@/lib/toast';
 
 const REMEMBER_EMAIL_KEY = 'luxury-erp-remember-email';
 
@@ -32,7 +33,6 @@ function SystemOverview() {
 }
 
 export function LoginPage() {
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +54,6 @@ export function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
-    setError('');
     try {
       if (rememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, data.email);
@@ -65,10 +64,11 @@ export function LoginPage() {
       const response = await authApi.login(data.email, data.password);
       const { user, accessToken, refreshToken } = response.data.data;
       if (!isAdminRole(user.role)) {
-        setError('Access restricted to admin users only.');
+        toast.error('Access restricted to admin users only.');
         return;
       }
       setAuth(user, accessToken, refreshToken);
+      toast.success('Welcome back!');
       navigate('/');
     } catch (err: unknown) {
       const axiosError = err as {
@@ -76,9 +76,9 @@ export function LoginPage() {
         code?: string;
       };
       if (!axiosError.response) {
-        setError('Cannot reach the server. Start the backend with: npm run dev (in the backend folder).');
+        toast.error('Cannot reach the server. Start the backend with: npm run dev (in the backend folder).');
       } else {
-        setError(axiosError.response?.data?.message || 'Login failed. Please try again.');
+        toast.error(axiosError.response?.data?.message || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -126,12 +126,6 @@ export function LoginPage() {
             </div>
 
             <h1 className="text-3xl font-bold text-primary-900 mb-8">Sign in</h1>
-
-            {error && (
-              <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               <div>
@@ -195,7 +189,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   className="text-sm text-primary-800 hover:text-gold transition-colors"
-                  onClick={() => setError('Contact your system administrator to reset your password.')}
+                  onClick={() => toast.info('Contact your system administrator to reset your password.')}
                 >
                   Forgot password?
                 </button>

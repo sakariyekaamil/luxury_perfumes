@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { catalogApi } from '@/lib/api';
+import { toast, getErrorMessage } from '@/lib/toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -35,7 +36,9 @@ export function SimpleCrudPage({ title, description, queryKey, getAll, create, u
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       setShowModal(false);
       setEditing(null);
+      toast.success(editing ? 'Saved successfully' : 'Created successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to save')),
   });
 
   const deleteMutation = useMutation({
@@ -43,7 +46,9 @@ export function SimpleCrudPage({ title, description, queryKey, getAll, create, u
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       setDeleteId(null);
+      toast.success('Deleted successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to delete')),
   });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

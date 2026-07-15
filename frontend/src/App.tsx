@@ -12,6 +12,7 @@ import { SalesPage, PurchasesPage } from './pages/SalesPage';
 import { SaleInvoicePage } from './pages/SaleInvoicePage';
 import { InventoryPage, ExpensesPage } from './pages/InventoryPage';
 import { ReportsPage, UsersPage, AuditLogsPage, NotificationsPage, SettingsPage } from './pages/ReportsPage';
+import { Toaster } from './components/ui/Toast';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient({
@@ -43,6 +44,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

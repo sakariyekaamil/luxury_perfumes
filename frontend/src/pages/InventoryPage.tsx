@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { operationsApi, productApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { toast, getErrorMessage } from '@/lib/toast';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, Pagination } from '@/components/ui/Table';
@@ -42,7 +43,9 @@ export function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ['inventory-valuation'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setShowModal(false);
+      toast.success('Inventory updated successfully');
     },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to update inventory')),
   });
 
   const txns = transactions?.data?.data || [];
@@ -140,7 +143,12 @@ export function ExpensesPage() {
 
   const createMutation = useMutation({
     mutationFn: adminApi.createExpense,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setShowModal(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      setShowModal(false);
+      toast.success('Expense recorded successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to record expense')),
   });
 
   const expenses = data?.data?.data || [];

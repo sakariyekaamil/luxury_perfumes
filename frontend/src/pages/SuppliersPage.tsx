@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { catalogApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { toast, getErrorMessage } from '@/lib/toast';
 import type { Supplier, Customer } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -28,12 +29,23 @@ export function SuppliersPage() {
   const mutation = useMutation({
     mutationFn: (payload: { id?: string; data: unknown }) =>
       payload.id ? catalogApi.updateSupplier(payload.id, payload.data) : catalogApi.createSupplier(payload.data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); setShowModal(false); setEditing(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setShowModal(false);
+      setEditing(null);
+      toast.success(editing ? 'Supplier updated successfully' : 'Supplier created successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to save supplier')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: catalogApi.deleteSupplier,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); setDeleteId(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setDeleteId(null);
+      toast.success('Supplier deleted successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to delete supplier')),
   });
 
   const suppliers = data?.data?.data || [];
@@ -135,12 +147,23 @@ export function CustomersPage() {
   const mutation = useMutation({
     mutationFn: (payload: { id?: string; data: unknown }) =>
       payload.id ? catalogApi.updateCustomer(payload.id, payload.data) : catalogApi.createCustomer(payload.data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['customers'] }); setShowModal(false); setEditing(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setShowModal(false);
+      setEditing(null);
+      toast.success(editing ? 'Customer updated successfully' : 'Customer created successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to save customer')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: catalogApi.deleteCustomer,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['customers'] }); setDeleteId(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setDeleteId(null);
+      toast.success('Customer deleted successfully');
+    },
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to delete customer')),
   });
 
   const customers = data?.data?.data || [];

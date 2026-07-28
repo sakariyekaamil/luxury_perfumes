@@ -4,6 +4,8 @@ import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { catalogApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast, getErrorMessage } from '@/lib/toast';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/store';
 import type { Supplier, Customer } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -14,6 +16,11 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/Loading';
 
 export function SuppliersPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'suppliers', 'create');
+  const canUpdate = hasPermission(user?.role, 'suppliers', 'update');
+  const canDelete = hasPermission(user?.role, 'suppliers', 'delete');
+  const canWrite = canCreate || canUpdate;
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -73,9 +80,11 @@ export function SuppliersPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Suppliers</h1>
           <p className="text-slate-500">Manage your perfume suppliers</p>
         </div>
-        <Button variant="gold" onClick={() => { setEditing(null); setShowModal(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Supplier
-        </Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => { setEditing(null); setShowModal(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Supplier
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -91,7 +100,7 @@ export function SuppliersPage() {
                 <TableHead>Company</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Actions</TableHead>
+                {(canUpdate || canDelete) && <TableHead>Actions</TableHead>}
               </TableHeader>
               <TableBody>
                 {suppliers.map((s: Supplier) => (
@@ -100,12 +109,18 @@ export function SuppliersPage() {
                     <TableCell>{s.companyName || '-'}</TableCell>
                     <TableCell>{s.phone || '-'}</TableCell>
                     <TableCell>{s.email || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => setDeleteId(s.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Trash2 className="h-4 w-4" /></button>
-                      </div>
-                    </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {canUpdate && (
+                            <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => setDeleteId(s.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Trash2 className="h-4 w-4" /></button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -115,23 +130,32 @@ export function SuppliersPage() {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setEditing(null); }} title={editing ? 'Edit Supplier' : 'Add Supplier'}
-        footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('supplier-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>{editing ? 'Update' : 'Create'}</Button></>}>
-        <form id="supplier-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Name" name="name" defaultValue={editing?.name} required />
-          <Input label="Company Name" name="companyName" defaultValue={editing?.companyName} />
-          <Input label="Phone" name="phone" defaultValue={editing?.phone} />
-          <Input label="Email" name="email" type="email" defaultValue={editing?.email} />
-          <div className="sm:col-span-2"><Input label="Address" name="address" defaultValue={editing?.address} /></div>
-        </form>
-      </Modal>
+      {canWrite && (
+        <Modal isOpen={showModal} onClose={() => { setShowModal(false); setEditing(null); }} title={editing ? 'Edit Supplier' : 'Add Supplier'}
+          footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('supplier-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>{editing ? 'Update' : 'Create'}</Button></>}>
+          <form id="supplier-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Name" name="name" defaultValue={editing?.name} required />
+            <Input label="Company Name" name="companyName" defaultValue={editing?.companyName} />
+            <Input label="Phone" name="phone" defaultValue={editing?.phone} />
+            <Input label="Email" name="email" type="email" defaultValue={editing?.email} />
+            <div className="sm:col-span-2"><Input label="Address" name="address" defaultValue={editing?.address} /></div>
+          </form>
+        </Modal>
+      )}
 
-      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteId && deleteMutation.mutate(deleteId)} title="Delete Supplier" message="Are you sure?" loading={deleteMutation.isPending} />
+      {canDelete && (
+        <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteId && deleteMutation.mutate(deleteId)} title="Delete Supplier" message="Are you sure?" loading={deleteMutation.isPending} />
+      )}
     </div>
   );
 }
 
 export function CustomersPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'customers', 'create');
+  const canUpdate = hasPermission(user?.role, 'customers', 'update');
+  const canDelete = hasPermission(user?.role, 'customers', 'delete');
+  const canWrite = canCreate || canUpdate;
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -191,9 +215,11 @@ export function CustomersPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Customers</h1>
           <p className="text-slate-500">Manage customer relationships</p>
         </div>
-        <Button variant="gold" onClick={() => { setEditing(null); setShowModal(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Customer
-        </Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => { setEditing(null); setShowModal(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Customer
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -211,7 +237,7 @@ export function CustomersPage() {
                 <TableHead>Total Spent</TableHead>
                 <TableHead>Loyalty</TableHead>
                 <TableHead>VIP</TableHead>
-                <TableHead>Actions</TableHead>
+                {(canUpdate || canDelete) && <TableHead>Actions</TableHead>}
               </TableHeader>
               <TableBody>
                 {customers.map((c: Customer) => (
@@ -222,12 +248,18 @@ export function CustomersPage() {
                     <TableCell className="font-semibold">{formatCurrency(Number(c.totalSpent))}</TableCell>
                     <TableCell>{c.loyaltyPoints} pts</TableCell>
                     <TableCell>{c.isVip ? <Badge variant="gold">VIP</Badge> : '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <button onClick={() => { setEditing(c); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Trash2 className="h-4 w-4" /></button>
-                      </div>
-                    </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {canUpdate && (
+                            <button onClick={() => { setEditing(c); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Trash2 className="h-4 w-4" /></button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -237,21 +269,25 @@ export function CustomersPage() {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setEditing(null); }} title={editing ? 'Edit Customer' : 'Add Customer'}
-        footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('customer-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>{editing ? 'Update' : 'Create'}</Button></>}>
-        <form id="customer-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Name" name="name" defaultValue={editing?.name} required />
-          <Input label="Phone" name="phone" defaultValue={editing?.phone} />
-          <Input label="Email" name="email" type="email" defaultValue={editing?.email} />
-          <select name="isVip" className="luxury-input" defaultValue={editing?.isVip ? 'true' : 'false'}>
-            <option value="false">Regular</option>
-            <option value="true">VIP</option>
-          </select>
-          <div className="sm:col-span-2"><Input label="Address" name="address" defaultValue={editing?.address} /></div>
-        </form>
-      </Modal>
+      {canWrite && (
+        <Modal isOpen={showModal} onClose={() => { setShowModal(false); setEditing(null); }} title={editing ? 'Edit Customer' : 'Add Customer'}
+          footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('customer-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>{editing ? 'Update' : 'Create'}</Button></>}>
+          <form id="customer-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Name" name="name" defaultValue={editing?.name} required />
+            <Input label="Phone" name="phone" defaultValue={editing?.phone} />
+            <Input label="Email" name="email" type="email" defaultValue={editing?.email} />
+            <select name="isVip" className="luxury-input" defaultValue={editing?.isVip ? 'true' : 'false'}>
+              <option value="false">Regular</option>
+              <option value="true">VIP</option>
+            </select>
+            <div className="sm:col-span-2"><Input label="Address" name="address" defaultValue={editing?.address} /></div>
+          </form>
+        </Modal>
+      )}
 
-      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteId && deleteMutation.mutate(deleteId)} title="Delete Customer" message="Are you sure?" loading={deleteMutation.isPending} />
+      {canDelete && (
+        <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteId && deleteMutation.mutate(deleteId)} title="Delete Customer" message="Are you sure?" loading={deleteMutation.isPending} />
+      )}
     </div>
   );
 }

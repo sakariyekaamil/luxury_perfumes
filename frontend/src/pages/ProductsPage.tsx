@@ -4,6 +4,8 @@ import { Plus, Search, Pencil, Trash2, Package } from 'lucide-react';
 import { productApi, catalogApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { toast, getErrorMessage } from '@/lib/toast';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/store';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -14,6 +16,11 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { LoadingSpinner, EmptyState } from '@/components/ui/Loading';
 
 export function ProductsPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'products', 'create');
+  const canUpdate = hasPermission(user?.role, 'products', 'update');
+  const canDelete = hasPermission(user?.role, 'products', 'delete');
+  const canWrite = canCreate || canUpdate;
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -80,9 +87,11 @@ export function ProductsPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Products</h1>
           <p className="text-slate-500">Manage your perfume inventory</p>
         </div>
-        <Button variant="gold" onClick={() => { setEditingProduct(null); setShowModal(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Product
-        </Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => { setEditingProduct(null); setShowModal(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Product
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -124,7 +133,7 @@ export function ProductsPage() {
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                {(canUpdate || canDelete) && <TableHead>Actions</TableHead>}
               </TableHeader>
               <TableBody>
                 {products.map((product: Product) => (
@@ -141,16 +150,22 @@ export function ProductsPage() {
                       </span>
                     </TableCell>
                     <TableCell><StatusBadge status={product.status} /></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <button onClick={() => { setEditingProduct(product); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-primary-700">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => setDeleteId(product.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {canUpdate && (
+                            <button onClick={() => { setEditingProduct(product); setShowModal(true); }} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-primary-700">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => setDeleteId(product.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -160,6 +175,7 @@ export function ProductsPage() {
         )}
       </Card>
 
+      {canWrite && (
       <Modal
         isOpen={showModal}
         onClose={() => { setShowModal(false); setEditingProduct(null); }}
@@ -193,7 +209,9 @@ export function ProductsPage() {
           </div>
         </form>
       </Modal>
+      )}
 
+      {canDelete && (
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
@@ -203,6 +221,7 @@ export function ProductsPage() {
         confirmText="Delete"
         loading={deleteMutation.isPending}
       />
+      )}
     </div>
   );
 }

@@ -20,46 +20,84 @@ async function main() {
 
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@luxuryperfumes.com' },
-    update: { role: UserRole.ADMIN, isActive: true, deletedAt: null },
+    update: {
+      role: UserRole.SUPER_ADMIN,
+      isActive: true,
+      deletedAt: null,
+    },
     create: {
       email: 'admin@luxuryperfumes.com',
       password: hashedPassword,
-      firstName: 'Admin',
-      lastName: 'User',
-      role: UserRole.ADMIN,
+      firstName: 'Super',
+      lastName: 'Admin',
+      role: UserRole.SUPER_ADMIN,
       phone: '+252-61-000-0000',
     },
   });
 
-  // All privileged users → Admin role only
-  await prisma.user.updateMany({
-    where: { role: UserRole.SUPER_ADMIN },
-    data: { role: UserRole.ADMIN },
-  });
+  console.log('✅ Super Admin ready (admin@luxuryperfumes.com)');
 
-  // Remove non-admin users (manager, cashier, inventory staff)
-  await prisma.user.updateMany({
-    where: {
-      role: { notIn: [UserRole.ADMIN] },
+  const staffUsers: Array<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+    phone: string;
+  }> = [
+    {
+      email: 'admin.staff@luxuryperfumes.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: UserRole.ADMIN,
+      phone: '+252-61-000-0001',
     },
-    data: { isActive: false, deletedAt: new Date() },
-  });
+    {
+      email: 'manager@luxuryperfumes.com',
+      firstName: 'Manager',
+      lastName: 'User',
+      role: UserRole.MANAGER,
+      phone: '+252-61-000-0002',
+    },
+    {
+      email: 'cashier@luxuryperfumes.com',
+      firstName: 'Cashier',
+      lastName: 'User',
+      role: UserRole.CASHIER,
+      phone: '+252-61-000-0003',
+    },
+    {
+      email: 'inventory@luxuryperfumes.com',
+      firstName: 'Inventory',
+      lastName: 'Staff',
+      role: UserRole.INVENTORY_STAFF,
+      phone: '+252-61-000-0004',
+    },
+  ];
 
-  await prisma.user.updateMany({
-    where: {
-      email: {
-        in: [
-          'manager@manalperfumes.com',
-          'cashier@manalperfumes.com',
-          'manager@luxuryperfumes.com',
-          'cashier@luxuryperfumes.com',
-        ],
+  for (const staff of staffUsers) {
+    await prisma.user.upsert({
+      where: { email: staff.email },
+      update: {
+        role: staff.role,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        phone: staff.phone,
+        password: hashedPassword,
+        isActive: true,
+        deletedAt: null,
       },
-    },
-    data: { isActive: false, deletedAt: new Date() },
-  });
+      create: {
+        email: staff.email,
+        password: hashedPassword,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        role: staff.role,
+        phone: staff.phone,
+      },
+    });
+  }
 
-  console.log('✅ Admin user ready (admin-only access)');
+  console.log('✅ Staff users ready (ADMIN, MANAGER, CASHIER, INVENTORY_STAFF)');
 
   await prisma.companySettings.updateMany({
     where: {
@@ -313,8 +351,12 @@ async function main() {
 
   console.log('✅ Notifications created');
   console.log('\n🎉 Seeding completed!');
-  console.log('\n📧 Login (admin only):');
-  console.log('   Admin: admin@luxuryperfumes.com / admin123');
+  console.log('\n📧 Login (password for all: admin123):');
+  console.log('   Super Admin: admin@luxuryperfumes.com');
+  console.log('   Admin:       admin.staff@luxuryperfumes.com');
+  console.log('   Manager:     manager@luxuryperfumes.com');
+  console.log('   Cashier:     cashier@luxuryperfumes.com');
+  console.log('   Inventory:   inventory@luxuryperfumes.com');
 }
 
 main()

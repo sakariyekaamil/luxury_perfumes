@@ -3,7 +3,7 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../config/database';
 import { AuthRequest } from './auth';
 import { ForbiddenError } from '../utils/errors';
-import { isAdminRole } from '../config/roles';
+import { isAdminRole, isSuperAdmin } from '../config/roles';
 
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   SUPER_ADMIN: 5,
@@ -17,6 +17,14 @@ export const requireAdminRole = (req: AuthRequest, _res: Response, next: NextFun
   if (!req.user) return next(new ForbiddenError());
   if (!isAdminRole(req.user.role)) {
     return next(new ForbiddenError('Access restricted to admin users only'));
+  }
+  next();
+};
+
+export const requireSuperAdmin = (req: AuthRequest, _res: Response, next: NextFunction) => {
+  if (!req.user) return next(new ForbiddenError());
+  if (!isSuperAdmin(req.user.role)) {
+    return next(new ForbiddenError('Access restricted to Super Admin only'));
   }
   next();
 };

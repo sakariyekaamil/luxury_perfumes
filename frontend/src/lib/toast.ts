@@ -21,9 +21,18 @@ function show(type: ToastType, input: ToastInput, duration?: number) {
 }
 
 export function getErrorMessage(err: unknown, fallback = 'Something went wrong') {
-  if (err instanceof Error && err.message) return err.message;
-  const axiosError = err as { response?: { data?: { message?: string } } };
-  return axiosError.response?.data?.message || fallback;
+  const axiosError = err as {
+    response?: { data?: { message?: string; errors?: Array<{ message?: string }> } };
+    message?: string;
+  };
+  if (axiosError.response?.data?.message) return axiosError.response.data.message;
+  if (axiosError.response?.data?.errors?.[0]?.message) {
+    return axiosError.response.data.errors[0].message;
+  }
+  if (err instanceof Error && err.message && !err.message.startsWith('Request failed with status')) {
+    return err.message;
+  }
+  return fallback;
 }
 
 export const toast = {

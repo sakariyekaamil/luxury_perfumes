@@ -1,14 +1,13 @@
 import { Router, Response, NextFunction } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { requireAdminRole } from '../middleware/rbac';
+import { checkPermission } from '../middleware/rbac';
 import { DashboardService } from '../services/dashboard.service';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireAdminRole);
 
-router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/stats', checkPermission('dashboard', 'read'), async (_req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const stats = await DashboardService.getStats();
     res.json({ success: true, data: stats });
@@ -17,7 +16,7 @@ router.get('/stats', async (_req: AuthRequest, res: Response, next: NextFunction
   }
 });
 
-router.get('/revenue', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/revenue', checkPermission('dashboard', 'read'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const period = (req.query.period as 'daily' | 'weekly' | 'monthly') || 'monthly';
     const data = await DashboardService.getRevenueAnalytics(period);
@@ -27,7 +26,7 @@ router.get('/revenue', async (req: AuthRequest, res: Response, next: NextFunctio
   }
 });
 
-router.get('/sales-analytics', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/sales-analytics', checkPermission('dashboard', 'read'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const period = (req.query.period as 'daily' | 'weekly' | 'monthly') || 'monthly';
     const data = await DashboardService.getSalesAnalytics(period);

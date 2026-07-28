@@ -4,11 +4,12 @@ import { Download, FileText, Upload, X, ImageIcon } from 'lucide-react';
 import { adminApi, operationsApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, downloadBlob, resolveMediaUrl } from '@/lib/utils';
 import { toast, getErrorMessage } from '@/lib/toast';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/store';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Card, StatCard } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/Loading';
-import { isAdminRole, formatRoleLabel } from '@/lib/roles';
 import type { Sale, CompanySettings } from '@/types';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -224,56 +225,6 @@ export function ReportsPage() {
   );
 }
 
-export function UsersPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => adminApi.getUsers({ limit: 50 }),
-  });
-
-  const users = (data?.data?.data || []).filter(
-    (u: { role: string }) => isAdminRole(u.role)
-  );
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-900 dark:text-white">User Management</h1>
-        <p className="text-slate-500">Admin users only</p>
-      </div>
-      <Card>
-        {isLoading ? <LoadingSpinner /> : users.length === 0 ? (
-          <p className="text-center text-slate-400 py-8">No admin users found</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b dark:border-slate-700">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y dark:divide-slate-700">
-                {users.map((u: { id: string; firstName: string; lastName: string; email: string; role: string; isActive: boolean }) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3 font-medium">{u.firstName} {u.lastName}</td>
-                    <td className="px-4 py-3 text-slate-500">{u.email}</td>
-                    <td className="px-4 py-3">{formatRoleLabel(u.role)}</td>
-                    <td className="px-4 py-3">
-                      <span className={u.isActive ? 'text-green-600' : 'text-red-500'}>{u.isActive ? 'Active' : 'Inactive'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
 export function AuditLogsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs'],
@@ -346,6 +297,8 @@ export function NotificationsPage() {
 }
 
 export function SettingsPage() {
+  const { user } = useAuthStore();
+  const canUpdate = hasPermission(user?.role, 'settings', 'update');
   const queryClient = useQueryClient();
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState('');
@@ -410,16 +363,17 @@ export function SettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUpdate) return;
     if (!form.companyName.trim()) {
       toast.warning('Company name is required');
       return;
     }
+    // Logo is managed only via upload/delete endpoints — do not overwrite it here
     mutation.mutate({
       companyName: form.companyName.trim(),
       email: form.email.trim() || undefined,
       phone: form.phone.trim() || undefined,
       address: form.address.trim() || undefined,
-      companyLogo: form.companyLogo.trim() || undefined,
       currency: form.currency,
       currencySymbol: form.currencySymbol.trim(),
       taxRate: Number(form.taxRate) || 0,
@@ -507,6 +461,7 @@ export function SettingsPage() {
                 value={form.companyName}
                 onChange={(e) => setField('companyName', e.target.value)}
                 required
+                disabled={!canUpdate}
               />
               <Input
                 id="email"
@@ -515,6 +470,7 @@ export function SettingsPage() {
                 value={form.email}
                 onChange={(e) => setField('email', e.target.value)}
                 placeholder="info@luxuryperfumes.com"
+                disabled={!canUpdate}
               />
               <Input
                 id="phone"
@@ -522,6 +478,7 @@ export function SettingsPage() {
                 value={form.phone}
                 onChange={(e) => setField('phone', e.target.value)}
                 placeholder="+252-63-000-0000"
+                disabled={!canUpdate}
               />
               <div className="sm:col-span-2">
                 <p className="luxury-label mb-2">Company Logo</p>
@@ -534,36 +491,40 @@ export function SettingsPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <input
-                      type="file"
-                      id="logoUpload"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
-                      onChange={handleLogoUpload}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      loading={logoUploading}
-                      onClick={() => document.getElementById('logoUpload')?.click()}
-                    >
-                      <Upload className="w-4 h-4 mr-1" />
-                      Upload Logo
-                    </Button>
-                    {form.companyLogo && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={logoUploading}
-                        onClick={handleLogoDelete}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Remove Logo
-                      </Button>
+                    {canUpdate && (
+                      <>
+                        <input
+                          type="file"
+                          id="logoUpload"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          loading={logoUploading}
+                          onClick={() => document.getElementById('logoUpload')?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-1" />
+                          Upload Logo
+                        </Button>
+                        {form.companyLogo && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={logoUploading}
+                            onClick={handleLogoDelete}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Remove Logo
+                          </Button>
+                        )}
+                        <p className="text-xs text-slate-500">JPEG, PNG, WebP or GIF. Max 2MB.</p>
+                      </>
                     )}
-                    <p className="text-xs text-slate-500">JPEG, PNG, WebP or GIF. Max 2MB.</p>
                   </div>
                 </div>
               </div>
@@ -574,6 +535,7 @@ export function SettingsPage() {
                   value={form.address}
                   onChange={(e) => setField('address', e.target.value)}
                   placeholder="Hargeisa, Somaliland"
+                  disabled={!canUpdate}
                 />
               </div>
             </div>
@@ -586,6 +548,7 @@ export function SettingsPage() {
                 label="Currency"
                 value={form.currency}
                 onChange={(e) => handleCurrencyChange(e.target.value)}
+                disabled={!canUpdate}
                 options={[
                   { value: 'USD', label: 'USD — US Dollar' },
                   { value: 'EUR', label: 'EUR — Euro' },
@@ -599,6 +562,7 @@ export function SettingsPage() {
                 value={form.currencySymbol}
                 onChange={(e) => setField('currencySymbol', e.target.value)}
                 maxLength={5}
+                disabled={!canUpdate}
               />
               <Input
                 id="taxRate"
@@ -609,13 +573,15 @@ export function SettingsPage() {
                 step={0.1}
                 value={form.taxRate}
                 onChange={(e) => setField('taxRate', e.target.value)}
+                disabled={!canUpdate}
               />
               <div className="flex items-end pb-1">
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label className={`flex items-center gap-3 ${canUpdate ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}>
                   <input
                     type="checkbox"
                     checked={form.taxEnabled}
                     onChange={(e) => setField('taxEnabled', e.target.checked)}
+                    disabled={!canUpdate}
                     className="h-4 w-4 rounded border-slate-300 text-gold focus:ring-gold"
                   />
                   <span className="text-sm font-medium text-primary-900 dark:text-white">Enable tax on sales</span>
@@ -632,6 +598,7 @@ export function SettingsPage() {
                 value={form.invoicePrefix}
                 onChange={(e) => setField('invoicePrefix', e.target.value)}
                 placeholder="MP"
+                disabled={!canUpdate}
               />
               <div className="sm:col-span-2">
                 <Textarea
@@ -640,6 +607,7 @@ export function SettingsPage() {
                   value={form.invoiceFooter}
                   onChange={(e) => setField('invoiceFooter', e.target.value)}
                   placeholder="Thank you for shopping at Luxury Perfumes"
+                  disabled={!canUpdate}
                 />
               </div>
             </div>
@@ -654,6 +622,7 @@ export function SettingsPage() {
                 min={0}
                 value={form.lowStockThreshold}
                 onChange={(e) => setField('lowStockThreshold', e.target.value)}
+                disabled={!canUpdate}
               />
               <p className="text-sm text-slate-500 sm:col-span-2">
                 Products with stock at or below this level appear in low-stock alerts on the dashboard.
@@ -661,31 +630,33 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => settings && setForm({
-                companyName: settings.companyName || '',
-                email: settings.email || '',
-                phone: settings.phone || '',
-                address: settings.address || '',
-                companyLogo: settings.companyLogo || '',
-                currency: settings.currency || 'USD',
-                currencySymbol: settings.currencySymbol || '$',
-                taxRate: String(Number(settings.taxRate) || 0),
-                taxEnabled: settings.taxEnabled,
-                invoicePrefix: settings.invoicePrefix || 'MP',
-                invoiceFooter: settings.invoiceFooter || '',
-                lowStockThreshold: String(settings.lowStockThreshold ?? 5),
-              })}
-            >
-              Reset
-            </Button>
-            <Button type="submit" variant="gold" loading={mutation.isPending}>
-              Save Settings
-            </Button>
-          </div>
+          {canUpdate && (
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => settings && setForm({
+                  companyName: settings.companyName || '',
+                  email: settings.email || '',
+                  phone: settings.phone || '',
+                  address: settings.address || '',
+                  companyLogo: settings.companyLogo || '',
+                  currency: settings.currency || 'USD',
+                  currencySymbol: settings.currencySymbol || '$',
+                  taxRate: String(Number(settings.taxRate) || 0),
+                  taxEnabled: settings.taxEnabled,
+                  invoicePrefix: settings.invoicePrefix || 'MP',
+                  invoiceFooter: settings.invoiceFooter || '',
+                  lowStockThreshold: String(settings.lowStockThreshold ?? 5),
+                })}
+              >
+                Reset
+              </Button>
+              <Button type="submit" variant="gold" loading={mutation.isPending}>
+                Save Settings
+              </Button>
+            </div>
+          )}
         </form>
       )}
     </div>

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store';
 import { authApi } from '@/lib/api';
-import { isAdminRole } from '@/lib/roles';
+import { isValidRole } from '@/lib/roles';
 import { toast } from '@/lib/toast';
 
 const REMEMBER_EMAIL_KEY = 'luxury-erp-remember-email';
@@ -63,8 +63,8 @@ export function LoginPage() {
 
       const response = await authApi.login(data.email, data.password);
       const { user, accessToken, refreshToken } = response.data.data;
-      if (!isAdminRole(user.role)) {
-        toast.error('Access restricted to admin users only.');
+      if (!isValidRole(user.role)) {
+        toast.error('Your account role is not recognized.');
         return;
       }
       setAuth(user, accessToken, refreshToken);
@@ -205,7 +205,7 @@ export function LoginPage() {
               </button>
 
               <p className="text-center text-xs text-slate-400">
-                Admin access only — Luxury Perfumes ERP
+                Staff access — Luxury Perfumes ERP
               </p>
             </form>
 

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { operationsApi, productApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast, getErrorMessage } from '@/lib/toast';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/store';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, Pagination } from '@/components/ui/Table';
@@ -12,6 +14,9 @@ import { Select } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/ui/Badge';
 
 export function InventoryPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'inventory', 'create');
+  const canUpdate = hasPermission(user?.role, 'inventory', 'update');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [action, setAction] = useState<'stock-in' | 'stock-out' | 'adjust'>('stock-in');
@@ -71,9 +76,15 @@ export function InventoryPage() {
           <p className="text-slate-500">Stock management and valuation</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setAction('stock-in'); setShowModal(true); }}>Stock In</Button>
-          <Button variant="outline" onClick={() => { setAction('stock-out'); setShowModal(true); }}>Stock Out</Button>
-          <Button variant="gold" onClick={() => { setAction('adjust'); setShowModal(true); }}>Adjust</Button>
+          {canCreate && (
+            <Button variant="outline" onClick={() => { setAction('stock-in'); setShowModal(true); }}>Stock In</Button>
+          )}
+          {canUpdate && (
+            <>
+              <Button variant="outline" onClick={() => { setAction('stock-out'); setShowModal(true); }}>Stock Out</Button>
+              <Button variant="gold" onClick={() => { setAction('adjust'); setShowModal(true); }}>Adjust</Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -118,20 +129,24 @@ export function InventoryPage() {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={action === 'stock-in' ? 'Stock In' : action === 'stock-out' ? 'Stock Out' : 'Adjust Stock'}
-        footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('inventory-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Confirm</Button></>}>
-        <form id="inventory-form" onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Product" name="productId" required
-            options={[{ value: '', label: 'Select product' }, ...((products?.data?.data || []).map((p: { id: string; name: string }) => ({ value: p.id, label: p.name })))]} />
-          <input className="luxury-input" name="quantity" type="number" placeholder={action === 'adjust' ? 'New Quantity' : 'Quantity'} required />
-          <input className="luxury-input" name="notes" placeholder="Notes (optional)" />
-        </form>
-      </Modal>
+      {(canCreate || canUpdate) && (
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={action === 'stock-in' ? 'Stock In' : action === 'stock-out' ? 'Stock Out' : 'Adjust Stock'}
+          footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={mutation.isPending} onClick={() => document.getElementById('inventory-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Confirm</Button></>}>
+          <form id="inventory-form" onSubmit={handleSubmit} className="space-y-4">
+            <Select label="Product" name="productId" required
+              options={[{ value: '', label: 'Select product' }, ...((products?.data?.data || []).map((p: { id: string; name: string }) => ({ value: p.id, label: p.name })))]} />
+            <input className="luxury-input" name="quantity" type="number" placeholder={action === 'adjust' ? 'New Quantity' : 'Quantity'} required />
+            <input className="luxury-input" name="notes" placeholder="Notes (optional)" />
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
 
 export function ExpensesPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'expenses', 'create');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const queryClient = useQueryClient();
@@ -171,7 +186,9 @@ export function ExpensesPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Expenses</h1>
           <p className="text-slate-500">Track business expenses</p>
         </div>
-        <Button variant="gold" onClick={() => setShowModal(true)}>Add Expense</Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => setShowModal(true)}>Add Expense</Button>
+        )}
       </div>
       <Card>
         {isLoading ? <LoadingSpinner /> : (
@@ -201,15 +218,17 @@ export function ExpensesPage() {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Expense"
-        footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={createMutation.isPending} onClick={() => document.getElementById('expense-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Create</Button></>}>
-        <form id="expense-form" onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Category" name="category" required
-            options={['RENT', 'SALARIES', 'UTILITIES', 'MARKETING', 'OTHER'].map((c) => ({ value: c, label: c }))} />
-          <input className="luxury-input" name="amount" type="number" step="0.01" placeholder="Amount" required />
-          <input className="luxury-input" name="description" placeholder="Description" required />
-        </form>
-      </Modal>
+      {canCreate && (
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Expense"
+          footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={createMutation.isPending} onClick={() => document.getElementById('expense-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Create</Button></>}>
+          <form id="expense-form" onSubmit={handleSubmit} className="space-y-4">
+            <Select label="Category" name="category" required
+              options={['RENT', 'SALARIES', 'UTILITIES', 'MARKETING', 'OTHER'].map((c) => ({ value: c, label: c }))} />
+            <input className="luxury-input" name="amount" type="number" step="0.01" placeholder="Amount" required />
+            <input className="luxury-input" name="description" placeholder="Description" required />
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

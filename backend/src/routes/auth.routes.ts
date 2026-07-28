@@ -2,22 +2,12 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../services/auth.service';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { requireAdminRole } from '../middleware/rbac';
 
 const router = Router();
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-});
-
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  phone: z.string().optional(),
-  role: z.enum(['ADMIN']).optional(),
 });
 
 router.post('/login', async (req, res: Response, next: NextFunction) => {
@@ -30,15 +20,7 @@ router.post('/login', async (req, res: Response, next: NextFunction) => {
   }
 });
 
-router.post('/register', async (req, res: Response, next: NextFunction) => {
-  try {
-    const data = registerSchema.parse(req.body);
-    const user = await AuthService.register(data);
-    res.status(201).json({ success: true, data: user });
-  } catch (error) {
-    next(error);
-  }
-});
+// Public registration disabled — users are created by SUPER_ADMIN via /api/admin/users
 
 router.post('/refresh', async (req, res: Response, next: NextFunction) => {
   try {
@@ -51,7 +33,7 @@ router.post('/refresh', async (req, res: Response, next: NextFunction) => {
   }
 });
 
-router.post('/logout', authenticate, requireAdminRole, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/logout', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await AuthService.logout(req.user!.id, req.body.refreshToken, req.ip);
     res.json({ success: true, message: 'Logged out successfully' });
@@ -60,7 +42,7 @@ router.post('/logout', authenticate, requireAdminRole, async (req: AuthRequest, 
   }
 });
 
-router.get('/profile', authenticate, requireAdminRole, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/profile', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const user = await AuthService.getProfile(req.user!.id);
     res.json({ success: true, data: user });

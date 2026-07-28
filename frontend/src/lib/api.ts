@@ -11,6 +11,14 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // FormData needs the browser-generated multipart boundary — never force Content-Type
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (typeof config.headers?.set === 'function') {
+      config.headers.delete('Content-Type');
+    } else {
+      delete (config.headers as Record<string, unknown>)['Content-Type'];
+    }
+  }
   return config;
 });
 
@@ -141,9 +149,7 @@ export const adminApi = {
   uploadLogo: (file: File) => {
     const formData = new FormData();
     formData.append('logo', file);
-    return api.post('/admin/settings/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post('/admin/settings/logo', formData);
   },
   deleteLogo: () => api.delete('/admin/settings/logo'),
   getNotifications: (params?: Record<string, unknown>) => api.get('/admin/notifications', { params }),

@@ -1,15 +1,14 @@
 import { Router, Response, NextFunction } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { requireAdminRole } from '../middleware/rbac';
+import { checkPermission } from '../middleware/rbac';
 import { ProductService } from '../services/product.service';
 import { paramId } from '../utils/params';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireAdminRole);
 
-router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/', checkPermission('products', 'read'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await ProductService.getAll({
       page: Number(req.query.page) || 1,
@@ -26,7 +25,7 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 });
 
-router.get('/low-stock', async (_req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/low-stock', checkPermission('products', 'read'), async (_req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const products = await ProductService.getLowStock();
     res.json({ success: true, data: products });
@@ -35,7 +34,7 @@ router.get('/low-stock', async (_req: AuthRequest, res: Response, next: NextFunc
   }
 });
 
-router.get('/barcode/:barcode', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/barcode/:barcode', checkPermission('products', 'read'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { prisma } = await import('../config/database');
     const product = await prisma.product.findFirst({
@@ -49,7 +48,7 @@ router.get('/barcode/:barcode', async (req: AuthRequest, res: Response, next: Ne
   }
 });
 
-router.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/:id', checkPermission('products', 'read'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const product = await ProductService.getById(paramId(req.params.id));
     res.json({ success: true, data: product });
@@ -58,7 +57,7 @@ router.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) =
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', checkPermission('products', 'create'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const product = await ProductService.create(req.body, req.user!.id);
     res.status(201).json({ success: true, data: product });
@@ -67,7 +66,7 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
   }
 });
 
-router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', checkPermission('products', 'update'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const product = await ProductService.update(paramId(req.params.id), req.body, req.user!.id);
     res.json({ success: true, data: product });
@@ -76,7 +75,7 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction) =
   }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/:id', checkPermission('products', 'delete'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await ProductService.delete(paramId(req.params.id), req.user!.id);
     res.json({ success: true, data: result });

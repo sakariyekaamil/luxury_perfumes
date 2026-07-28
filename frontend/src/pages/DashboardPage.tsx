@@ -119,16 +119,16 @@ export function DashboardPage() {
               Real-time overview of revenue, sales, inventory, and business activity.
             </p>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 px-5 py-4 min-w-[140px]">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Today</p>
-              <p className="text-xl font-bold text-gold mt-1">{formatCurrency(stats.todayRevenue)}</p>
-              <p className="text-xs text-slate-400 mt-1">{stats.todaySalesCount} sales</p>
+          <div className="flex flex-wrap gap-2.5">
+            <div className="rounded-lg bg-white/10 backdrop-blur border border-white/10 px-3 py-1.5 min-w-[100px]">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none">Today</p>
+              <p className="text-sm font-bold text-gold mt-0.5 leading-tight">{formatCurrency(stats.todayRevenue)}</p>
+              <p className="text-[10px] text-slate-400 leading-none">{stats.todaySalesCount} sales</p>
             </div>
-            <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 px-5 py-4 min-w-[140px]">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">This Month</p>
-              <p className="text-xl font-bold text-white mt-1">{formatCurrency(stats.monthRevenue)}</p>
-              <p className="text-xs text-slate-400 mt-1">{stats.monthSalesCount} sales</p>
+            <div className="rounded-lg bg-white/10 backdrop-blur border border-white/10 px-3 py-1.5 min-w-[100px]">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide leading-none">This Month</p>
+              <p className="text-sm font-bold text-white mt-0.5 leading-tight">{formatCurrency(stats.monthRevenue)}</p>
+              <p className="text-[10px] text-slate-400 leading-none">{stats.monthSalesCount} sales</p>
             </div>
           </div>
         </div>

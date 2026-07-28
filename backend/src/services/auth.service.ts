@@ -1,49 +1,12 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { UserRole } from '@prisma/client';
 import { prisma } from '../config/database';
 import { config } from '../config';
-import { UnauthorizedError, ValidationError, ForbiddenError } from '../utils/errors';
+import { UnauthorizedError } from '../utils/errors';
 import { AuditService } from './audit.service';
-import { isAdminRole } from '../config/roles';
 
 export class AuthService {
-  static async register(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    role?: UserRole;
-  }) {
-    const existing = await prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) throw new ValidationError('Email already registered');
-
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        password: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        role: data.role && isAdminRole(data.role) ? data.role : UserRole.ADMIN,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        phone: true,
-        createdAt: true,
-      },
-    });
-
-    return user;
-  }
-
   static async login(email: string, password: string, ipAddress?: string) {
     const user = await prisma.user.findFirst({
       where: { email, deletedAt: null },
@@ -51,10 +14,6 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedError('Invalid credentials');
-    }
-
-    if (!isAdminRole(user.role)) {
-      throw new ForbiddenError('Access restricted to admin users only');
     }
 
     const valid = await bcrypt.compare(password, user.password);
@@ -105,12 +64,8 @@ export class AuthService {
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
 
-    if (!tokenRecord.user.isActive) {
+    if (!tokenRecord.user.isActive || tokenRecord.user.deletedAt) {
       throw new UnauthorizedError('User account is inactive');
-    }
-
-    if (!isAdminRole(tokenRecord.user.role)) {
-      throw new ForbiddenError('Access restricted to admin users only');
     }
 
     const accessToken = jwt.sign(

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore, useThemeStore } from './store';
-import { isAdminRole } from './lib/roles';
+import { isValidRole } from './lib/roles';
 import { AppLayout } from './components/layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -11,7 +11,8 @@ import { SuppliersPage, CustomersPage } from './pages/SuppliersPage';
 import { SalesPage, PurchasesPage } from './pages/SalesPage';
 import { SaleInvoicePage } from './pages/SaleInvoicePage';
 import { InventoryPage, ExpensesPage } from './pages/InventoryPage';
-import { ReportsPage, UsersPage, AuditLogsPage, NotificationsPage, SettingsPage } from './pages/ReportsPage';
+import { ReportsPage, AuditLogsPage, NotificationsPage, SettingsPage } from './pages/ReportsPage';
+import { UsersPage } from './pages/UsersPage';
 import { Toaster } from './components/ui/Toast';
 import { useEffect } from 'react';
 
@@ -28,7 +29,7 @@ const queryClient = new QueryClient({
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!isAdminRole(user?.role)) {
+  if (!isValidRole(user?.role)) {
     logout();
     return <Navigate to="/login" replace />;
   }

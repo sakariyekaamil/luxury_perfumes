@@ -4,6 +4,8 @@ import { Plus, Trash2, FileText, Printer, Download } from 'lucide-react';
 import { operationsApi, catalogApi, productApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast, getErrorMessage } from '@/lib/toast';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/store';
 import type { Sale, Purchase, Product, Customer, CompanySettings } from '@/types';
 import { SaleInvoice } from '@/components/sales/SaleInvoice';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +33,9 @@ const PAYMENT_METHODS = [
 const emptyLine = (): SaleLineItem => ({ productId: '', quantity: 1, unitPrice: 0 });
 
 export function SalesPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'sales', 'create');
+  const canUpdate = hasPermission(user?.role, 'sales', 'update');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [customerId, setCustomerId] = useState('');
@@ -203,10 +208,12 @@ export function SalesPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Sales</h1>
           <p className="text-slate-500">View and manage sales transactions</p>
         </div>
-        <Button variant="gold" onClick={() => { resetForm(); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-1" />
-          Create Sale
-        </Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => { resetForm(); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-1" />
+            Create Sale
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -226,7 +233,7 @@ export function SalesPage() {
                 {sales.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-slate-400 py-10">
-                      No sales yet — click Create Sale to add one
+                      No sales yet{canCreate ? ' — click Create Sale to add one' : ''}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -250,7 +257,7 @@ export function SalesPage() {
                               </Button>
                             </>
                           )}
-                          {sale.status === 'DRAFT' && (
+                          {sale.status === 'DRAFT' && canUpdate && (
                             <>
                               <Button
                                 size="sm"
@@ -282,6 +289,7 @@ export function SalesPage() {
         )}
       </Card>
 
+      {canCreate && (
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -411,6 +419,7 @@ export function SalesPage() {
           </div>
         </div>
       </Modal>
+      )}
 
       <Modal
         isOpen={!!invoiceSale && !!settings}
@@ -440,6 +449,9 @@ export function SalesPage() {
 }
 
 export function PurchasesPage() {
+  const { user } = useAuthStore();
+  const canCreate = hasPermission(user?.role, 'purchases', 'create');
+  const canUpdate = hasPermission(user?.role, 'purchases', 'update');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const queryClient = useQueryClient();
@@ -491,7 +503,9 @@ export function PurchasesPage() {
           <h1 className="text-2xl font-bold text-primary-900 dark:text-white">Purchases</h1>
           <p className="text-slate-500">Manage purchase orders</p>
         </div>
-        <Button variant="gold" onClick={() => setShowModal(true)}>Create Purchase</Button>
+        {canCreate && (
+          <Button variant="gold" onClick={() => setShowModal(true)}>Create Purchase</Button>
+        )}
       </div>
       <Card>
         {isLoading ? <LoadingSpinner /> : (
@@ -503,7 +517,7 @@ export function PurchasesPage() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Actions</TableHead>
+                {canUpdate && <TableHead>Actions</TableHead>}
               </TableHeader>
               <TableBody>
                 {purchases.map((purchase: Purchase) => (
@@ -513,13 +527,15 @@ export function PurchasesPage() {
                     <TableCell className="font-semibold">{formatCurrency(Number(purchase.totalAmount))}</TableCell>
                     <TableCell><StatusBadge status={purchase.status} /></TableCell>
                     <TableCell>{formatDateTime(purchase.createdAt)}</TableCell>
-                    <TableCell>
-                      {purchase.status === 'DRAFT' && (
-                        <Button size="sm" variant="gold" loading={approveMutation.isPending} onClick={() => approveMutation.mutate(purchase.id)}>
-                          Approve
-                        </Button>
-                      )}
-                    </TableCell>
+                    {canUpdate && (
+                      <TableCell>
+                        {purchase.status === 'DRAFT' && (
+                          <Button size="sm" variant="gold" loading={approveMutation.isPending} onClick={() => approveMutation.mutate(purchase.id)}>
+                            Approve
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -529,20 +545,22 @@ export function PurchasesPage() {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create Purchase Order"
-        footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={createMutation.isPending} onClick={() => document.getElementById('purchase-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Create</Button></>}>
-        <form id="purchase-form" onSubmit={handleCreate} className="space-y-4">
-          <Select label="Supplier" name="supplierId" required
-            options={[{ value: '', label: 'Select supplier' }, ...((suppliers?.data?.data || []).map((s: { id: string; name: string }) => ({ value: s.id, label: s.name })))]} />
-          <Select label="Product" name="productId" required
-            options={[{ value: '', label: 'Select product' }, ...((products?.data?.data || []).map((p: { id: string; name: string }) => ({ value: p.id, label: p.name })))]} />
-          <div className="grid grid-cols-2 gap-4">
-            <input className="luxury-input" name="quantity" type="number" placeholder="Quantity" required />
-            <input className="luxury-input" name="unitCost" type="number" step="0.01" placeholder="Unit Cost" required />
-          </div>
-          <input className="luxury-input" name="notes" placeholder="Notes" />
-        </form>
-      </Modal>
+      {canCreate && (
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create Purchase Order"
+          footer={<><Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="gold" loading={createMutation.isPending} onClick={() => document.getElementById('purchase-form')?.dispatchEvent(new Event('submit', { bubbles: true }))}>Create</Button></>}>
+          <form id="purchase-form" onSubmit={handleCreate} className="space-y-4">
+            <Select label="Supplier" name="supplierId" required
+              options={[{ value: '', label: 'Select supplier' }, ...((suppliers?.data?.data || []).map((s: { id: string; name: string }) => ({ value: s.id, label: s.name })))]} />
+            <Select label="Product" name="productId" required
+              options={[{ value: '', label: 'Select product' }, ...((products?.data?.data || []).map((p: { id: string; name: string }) => ({ value: p.id, label: p.name })))]} />
+            <div className="grid grid-cols-2 gap-4">
+              <input className="luxury-input" name="quantity" type="number" placeholder="Quantity" required />
+              <input className="luxury-input" name="unitCost" type="number" step="0.01" placeholder="Unit Cost" required />
+            </div>
+            <input className="luxury-input" name="notes" placeholder="Notes" />
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
